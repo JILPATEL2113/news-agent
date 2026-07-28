@@ -1,0 +1,48 @@
+name: Daily News Video Upload
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  create-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Repo checkout karo
+        uses: actions/checkout@v4
+
+      - name: Python setup karo
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: ImageMagick install karo (captions ke liye)
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: ImageMagick policy fix (moviepy TextClip ke liye)
+        run: |
+          sudo sed -i 's/rights="none" pattern="@\*"/rights="read|write" pattern="@*"/' /etc/ImageMagick-6/policy.xml || true
+
+      - name: Dependencies install karo
+        run: pip install -r requirements.txt
+
+      - name: Pipeline chalao
+        working-directory: src
+        env:
+          NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+        run: python main.py
+
+      - name: Video artifact save karo (debugging ke liye)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-video
+          path: src/output/final_video.mp4
+          retention-days: 3
+          
